@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  jupyter:
+    image: project-sumo-image:latest
+    #build: 
+    #  context: .
+    #  dockerfile: ./Dockerfile
+    container_name: "project-sumo-container"
+    # restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      - "JUPYTER_ENABLE_LAB: yes"
+      - "JUPYTER_TOKEN: docker"
+    volumes:
+      - ./project:/project
+    command: bash -c "pip install -r /project/additional-requirements.txt && jupyter lab --ip=0.0.0.0 --allow-root"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 6G
+    #     reservations:
+    #       devices:
+    #       - capabilities: [gpu]   

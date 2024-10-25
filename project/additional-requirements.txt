@@ -1,0 +1,8 @@
+pandas
+scikit-learn
+matplotlib
+pydantic
+opencv-python
+shapely
+folium
+geopandas[all]
