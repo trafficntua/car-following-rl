@@ -39,8 +39,6 @@ def preprocess(df: pd.DataFrame):
     df["delta_lat"] = -df.groupby("track_id")["lat"].diff(periods=-1)
     df["delta_lon"] = -df.groupby("track_id")["lon"].diff(periods=-1)
 
-    # df['delta_lat'] = df.groupby('track_id')['lat'].diff()
-    # df['delta_lon'] = df.groupby('track_id')['lon'].diff()
     df["displ_angle"] = np.arctan2(df["delta_lat"], df["delta_lon"])
     df["lon_vel"] = df["speed"] * np.cos(df["displ_angle"])
     df["lat_vel"] = df["speed"] * np.sin(df["displ_angle"])
@@ -68,7 +66,7 @@ def preprocess(df: pd.DataFrame):
     df = df.loc[(~df["track_id"].isin(exclude_vehicles_85))]
 
     # subsample time to 200ms
-    df = df.loc[(df["time"] * 100).astype(int) % 8 == 0]
+    # df = df.loc[(df["time"] * 100).astype(int) % 8 == 0]
 
     df.sort_values(by=["track_id", "time"], inplace=True)
 
@@ -84,6 +82,9 @@ def preprocess(df: pd.DataFrame):
     df = df.loc[(df["next_lon"].notna()) & (df["next_lat"].notna())]
 
     df["time_index"] = df.groupby("track_id").cumcount()
+
+    df["points"] = df[["lat", "lon"]].apply(lambda x: (x["lat"], x["lon"]), axis=1)
+    df["lpoints"] = df["points"].apply(lambda x: [x])
     return df
 
 
@@ -111,7 +112,7 @@ def find_followage(df: pd.DataFrame):
     Gather the results in a new dataframe
     """
     followage = []
-    for (time,), df_time in tqdm(df.groupby(by=["time"])):
+    for _, df_time in tqdm(df.groupby(by=["time"])):
         # cross join and check if left follows right
         cross_df = df_time.merge(df_time, how="cross", suffixes=("_left", "_right"))
         left_dil_traj_gdf = gpd.GeoSeries(cross_df["track_id_left"].map(dil_traj_gdf))
@@ -166,21 +167,21 @@ def find_followage(df: pd.DataFrame):
         # append
         followage.append(follow[["track_id_left", "track_id_right", "time_left"]])
 
-        if time > 100.0:
-            break
     return pd.concat(followage, ignore_index=True)
 
 
 df = csv_to_df("/project/datasets/20181029_d1_1000_1030.csv")
 df = preprocess(df)
-df["points"] = df[["lat", "lon"]].apply(lambda x: (x["lat"], x["lon"]), axis=1)
-df["lpoints"] = df["points"].apply(lambda x: [x])
+
 
 _, AROUND_BUFFER = lat_lon_buffer(df["lat"].mean(), 30)
 _, TRAJECTORY_BUFFER = lat_lon_buffer(df["lat"].mean(), 2)
+
 dil_traj_gdf = gpd.GeoSeries(
     df.groupby("track_id")["lpoints"].sum().apply(LineString)
 ).buffer(TRAJECTORY_BUFFER)
 
 follow_df = find_followage(df)
-print(follow_df)
+
+follow_df.to_csv("/project/datasets/followage_df_20181029_d1_1000_1030.csv")
+df.to_csv("/project/datasets/df_20181029_d1_1000_1030.csv")
