@@ -217,10 +217,15 @@ def find_distance_between_follower_leader(follow_pairs_df: pd.DataFrame):
         )
         min_dist_follower_traj_point_idx = distances.idxmin()
         current_follower_cum_dist = row["cum_dist_follower"]
+        current_follower_step_dist = row["step_dist_follower"]
         future_follower_cum_dist = fast_hash_map.loc[
             (row["track_id_follower"], min_dist_follower_traj_point_idx)
         ]
-        dist = (future_follower_cum_dist - current_follower_cum_dist).values[0]
+        dist = (
+            future_follower_cum_dist
+            - current_follower_cum_dist
+            + current_follower_step_dist
+        ).values[0]
         return dist
 
     follow_pairs_df["leader_follower_dist"] = follow_pairs_df.loc[
