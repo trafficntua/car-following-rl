@@ -76,11 +76,11 @@ def preprocess(df: pd.DataFrame):
     # drop transitions in the begining and end of trajectory
     df = df.loc[(df["speed_lat"].notna()) & (df["speed_lon"].notna())]
 
-    # exclude Motorcycle and Taxis
-    df = df.loc[(df["vehicle_type"] != " Motorcycle") & (df["vehicle_type"] != " Taxi")]
+    # exclude Motorcycle
+    df = df.loc[(df["vehicle_type"] != " Motorcycle")]
 
-    # exclude vehicles that are stopped > 85% of their time
-    exclude_vehicles_85 = set()
+    # exclude vehicles that are stopped > 50% of their time
+    exclude_vehicles_50 = set()
     for (track_id,), df_id in df.groupby(by=["track_id"]):
         stopped_timesteps = len(
             df_id[
@@ -91,9 +91,9 @@ def preprocess(df: pd.DataFrame):
         )
         total_timesteps = len(df_id)
         stopped_percent = stopped_timesteps / total_timesteps
-        if stopped_percent > 0.85:
-            exclude_vehicles_85.add(track_id)
-    df = df.loc[(~df["track_id"].isin(exclude_vehicles_85))]
+        if stopped_percent > 0.50:
+            exclude_vehicles_50.add(track_id)
+    df = df.loc[(~df["track_id"].isin(exclude_vehicles_50))]
 
     df.sort_values(by=["track_id", "time"], inplace=True)
 
@@ -241,7 +241,7 @@ def find_distance_between_follower_leader(follow_pairs_df: pd.DataFrame):
     )
 
 
-df = csv_to_df("/project/datasets/20181029_d1_1000_1030.csv")
+df = csv_to_df("/project/datasets/20181029_d2_1000_1030.csv")
 df = preprocess(df)
 
 # Dilation radius around 2 meters
@@ -263,6 +263,11 @@ dil_traj_gdf = gpd.GeoSeries(
 
 # followage
 follow_df = find_followage(df)
+
+# to csv
+follow_df.to_csv(
+    "/project/datasets/follow_df_20181029_d2_1000_1030.csv", index=False
+)
 
 # df join follow_df join df
 follow_pairs_df = df.merge(
@@ -289,5 +294,5 @@ follow_pairs_df.drop(
 
 # to csv
 follow_pairs_df.to_csv(
-    "/project/datasets/follow_pairs_20181029_d1_1000_1030.csv", index=False
+    "/project/datasets/follow_pairs_20181029_d2_1000_1030.csv", index=False
 )

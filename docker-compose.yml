@@ -16,10 +16,10 @@ services:
     volumes:
       - ./project:/project
     command: bash -c "pip install -r /project/additional-requirements.txt && jupyter lab --ip=0.0.0.0 --allow-root"
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 6G
-    #     reservations:
-    #       devices:
-    #       - capabilities: [gpu]   
+    deploy:
+      resources:
+        limits:
+          memory: 10G
+        # reservations:
+        #   devices:
+        #   - capabilities: [gpu]   
