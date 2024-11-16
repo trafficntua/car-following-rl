@@ -6,3 +6,6 @@ opencv-python
 shapely
 folium
 geopandas[all]
+gymnasium
+transformers
+datasets

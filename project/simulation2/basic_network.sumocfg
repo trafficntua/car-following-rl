@@ -1,0 +1,25 @@
+<configuration>
+
+    <input>
+        <net-file value="basic_network.net.xml"/>
+		<route-files value="basic_network.rou.xml"/>
+
+    </input>
+
+    <processing>
+        <time-to-teleport value="-1"/>
+    </processing>
+
+	<time>
+        <begin value="0"/>
+        <step-length value="0.04"/>
+        <end value="3600"/>
+    </time>
+	
+    <report>
+        <duration-log.disable value="false"/>
+
+    </report>
+	<gui-settings-file value="basic_network.xml"/>
+	
+</configuration>

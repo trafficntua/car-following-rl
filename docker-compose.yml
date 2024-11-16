@@ -22,4 +22,4 @@ services:
           memory: 10G
         # reservations:
         #   devices:
-        #   - capabilities: [gpu]   
+        #   - capabilities: [gpu]
