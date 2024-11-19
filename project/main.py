@@ -5,12 +5,16 @@ sys.path.append("/usr/share/sumo/tools")
 from model.decision_transformer import predict
 import traci
 
+sigma = 0.5
 
-def get_local_reward(follower_speed, leader_speed, gap, decel=5):
-    v_safe = leader_speed + (gap - leader_speed * 1) / (
-        1 + (follower_speed + leader_speed) / 2 * decel
-    )
-    return -(not (0.9 * v_safe <= follower_speed <= 1.1 * v_safe))
+def get_local_reward2(follower_speed, v_safe):
+    if follower_speed <= (1 - sigma) * v_safe:
+        return -1
+    if follower_speed <= v_safe:
+        return (1 / sigma / v_safe) * follower_speed - 1 / sigma
+    if follower_speed < (1 + sigma) * v_safe:
+        return -(1 / sigma / v_safe) * follower_speed + 1 / sigma
+    return -1
 
 
 def warmup():
@@ -79,16 +83,19 @@ def simulate(ignore_vehicle_ids: set[str]):
             leader_id, gap = leader
             leader_velocity = traci.vehicle.getSpeed(leader_id)
             green = True
-
+            leader_max_comfortable_decel = traci.vehicle.getDecel(leader_id)
             follower_max_comfortable_decel = traci.vehicle.getDecel(follower_id)
-            local_reward = get_local_reward(
+
+            kraus_follow_speed = traci.vehicle.getFollowSpeed(follower_id, follower_velocity, gap + min_gap, leader_velocity, leader_max_comfortable_decel)
+
+            # print(kraus_follow_speed, follower_velocity)
+
+            local_reward = get_local_reward2(
                 follower_velocity,
-                leader_velocity,
-                gap,
-                follower_max_comfortable_decel,
+                kraus_follow_speed
             )
             trajectories[follower_id]["observations"].append(
-                [gap, follower_velocity, leader_velocity, green]
+                [gap, follower_velocity, leader_velocity]
             )
             trajectories[follower_id]["actions"].append([follower_acceleration])
             trajectories[follower_id]["dones"].append(False)
@@ -96,9 +103,10 @@ def simulate(ignore_vehicle_ids: set[str]):
 
             # the sauce
             #if len(trajectories[follower_id]['rewards']) > 20:
+            #    # print(kraus_follow_speed, follower_velocity)
             #    pred_act = predict(trajectories[follower_id], 0)
-            #    traci.vehicle.setAcceleration(follower_id, pred_act, 0.04)
             #    #print(pred_act, traci.vehicle.getAcceleration(follower_id ))
+            #    traci.vehicle.setAcceleration(follower_id, pred_act, 0.04)
         previous_vehicle_set = current_vehicle_set
     return trajectories, global_vehicles_exited
 
@@ -107,7 +115,7 @@ def stats(traj, completed_traj_ids):
     rewards_1000_ep = []
     for i, (vehID, traj) in enumerate(trajectories.items()):
         if vehID in completed_traj_ids:
-            if i % 10 == 0: print(traj['rewards'])
+            if i % 10 == 0: print(traj['rewards'], traj['rewards'],)
             rewards_1000_ep.append(sum([r for r in traj["rewards"]]))
     print(f"Mean 1000 episode reward = {sum(rewards_1000_ep) / len(rewards_1000_ep)}")
 

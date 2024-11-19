@@ -22,7 +22,7 @@
   "resid_pdrop": 0.1,
   "scale_attn_by_inverse_layer_idx": false,
   "scale_attn_weights": true,
-  "state_dim": 4,
+  "state_dim": 3,
   "torch_dtype": "float32",
   "transformers_version": "4.46.2",
   "use_cache": true,
