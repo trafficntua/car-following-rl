@@ -2,10 +2,10 @@ import os
 import sys
 
 sys.path.append("/usr/share/sumo/tools")
-from model.decision_transformer import predict
+from model.predict_action import predict
 import traci
 
-sigma = 0.5
+sigma = 0.2
 
 def get_local_reward2(follower_speed, v_safe):
     if follower_speed <= (1 - sigma) * v_safe:
@@ -102,11 +102,11 @@ def simulate(ignore_vehicle_ids: set[str]):
             trajectories[follower_id]["rewards"].append(local_reward)
 
             # the sauce
-            #if len(trajectories[follower_id]['rewards']) > 20:
-            #    # print(kraus_follow_speed, follower_velocity)
-            #    pred_act = predict(trajectories[follower_id], 0)
-            #    #print(pred_act, traci.vehicle.getAcceleration(follower_id ))
-            #    traci.vehicle.setAcceleration(follower_id, pred_act, 0.04)
+            if len(trajectories[follower_id]['rewards']) > 20:
+                # print(kraus_follow_speed, follower_velocity)
+                pred_act = predict(trajectories[follower_id], 0)
+                #print(pred_act, traci.vehicle.getAcceleration(follower_id ))
+                traci.vehicle.setAcceleration(follower_id, pred_act, 0.04)
         previous_vehicle_set = current_vehicle_set
     return trajectories, global_vehicles_exited
 

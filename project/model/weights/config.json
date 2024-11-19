@@ -24,7 +24,7 @@
   "scale_attn_weights": true,
   "state_dim": 3,
   "torch_dtype": "float32",
-  "transformers_version": "4.46.2",
+  "transformers_version": "4.46.3",
   "use_cache": true,
   "vocab_size": 1
 }

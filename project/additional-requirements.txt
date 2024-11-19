@@ -7,5 +7,5 @@ shapely
 folium
 geopandas[all]
 gymnasium
-transformers
+transformers[torch]
 datasets
