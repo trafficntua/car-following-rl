@@ -28,11 +28,11 @@ def compute_vsafe_on_dataset(
     leader_speed,
 ):
     vehicle_type_decels = {
-        "Car": 11.8882,
-        "Taxi": 13.7445,
-        "Bus": 2.4857,
-        "MediumVehicle": 10.5542,
-        "HeavyVehicle": 6.0276,
+        "Car": 4.6751,
+        "Taxi": 4.7778,
+        "Bus": 2.3356,
+        "MediumVehicle": 7.5270,
+        "HeavyVehicle": 5.7853,
     }
     clean_follower_type = follower_type.replace(' ', '')
     clean_leader_type = leader_type.replace(' ', '')
@@ -53,7 +53,7 @@ def compute_vsafe_on_dataset(
 
 # test 
 print(compute_vsafe_on_dataset("Car", "MediumVehicle", 10, 20, 20))
-print(compute_vsafe_on_dataset("Bus", "MediumVehicle", 10, 20, 20))
+print(compute_vsafe_on_dataset("Car", "Bus", 10, 20, 20))
 
 episodes_d2 = pd.read_csv(
     "/project/datasets/episodes_20181029_d2_1000_1030.csv",

@@ -1,4 +1,3 @@
-import os
 import sys
 
 sys.path.append("/usr/share/sumo/tools")
@@ -95,7 +94,7 @@ def simulate(ignore_vehicle_ids: set[str]):
                 kraus_follow_speed
             )
             trajectories[follower_id]["observations"].append(
-                [gap, follower_velocity, leader_velocity]
+                [gap + min_gap, follower_velocity, leader_velocity]
             )
             trajectories[follower_id]["actions"].append([follower_acceleration])
             trajectories[follower_id]["dones"].append(False)
@@ -103,9 +102,7 @@ def simulate(ignore_vehicle_ids: set[str]):
 
             # the sauce
             if len(trajectories[follower_id]['rewards']) > 20:
-                # print(kraus_follow_speed, follower_velocity)
                 pred_act = predict(trajectories[follower_id], 0)
-                #print(pred_act, traci.vehicle.getAcceleration(follower_id ))
                 traci.vehicle.setAcceleration(follower_id, pred_act, 0.04)
         previous_vehicle_set = current_vehicle_set
     return trajectories, global_vehicles_exited

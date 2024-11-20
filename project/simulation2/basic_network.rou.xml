@@ -7,11 +7,11 @@
 <!--    </routeDistribution>-->
     <route id="r1"
            edges="a b"/>
-    <vType id="Car" length="5.0" accel="10.0581" decel="11.8882" arrivalPos="max" sigma="0.5" speedFactor="normc(1,0.5,0.7,1.3)" probability="0.4"/>
-    <vType id="Taxi" length="5.0" accel="8.2995" decel="13.7445" arrivalPos="max" sigma="0.5" speedFactor="normc(1,0.3,0.7,1.4)" probability="0.2"/>
-    <vType id="Bus" length="12.5" accel="2.2920" decel="2.4857" arrivalPos="max" sigma="0.5" speedFactor="normc(1,0.2,0.7,1.1)" probability="0.1" />
-    <vType id="MediumVehicle" length="5.83" accel="12.2061" decel="10.5542" arrivalPos="max" sigma="0.5" speedFactor="normc(1,0.45,0.6,1.2)" probability="0.2"/>
-    <vType id="HeavyVehicle" length="12.5" accel="6.1883" decel="6.0276" arrivalPos="max" sigma="0.5" speedFactor="normc(1, 0.2, 0.7, 1)" probability="0.1"/>
+    <vType id="Car" length="5.0" accel="2.2732" decel="4.6751" emergencyDecel="11.8882" arrivalPos="max" sigma="0.5" speedFactor="normc(1,0.5,0.7,1.3)" probability="0.45"/>
+    <vType id="Taxi" length="5.0" accel="2.1422" decel="4.7778" emergencyDecel="13.7445" arrivalPos="max" sigma="0.5" speedFactor="normc(1,0.3,0.7,1.4)" probability="0.2"/>
+    <vType id="Bus" length="12.5" accel="1.5137" decel="2.3356" emergencyDecel="2.4857" arrivalPos="max" sigma="0.5" speedFactor="normc(1,0.2,0.7,1.1)" probability="0.05" />
+    <vType id="MediumVehicle" length="5.83" accel="2.7989" decel="7.5270" emergencyDecel="10.5542" arrivalPos="max" sigma="0.5" speedFactor="normc(1,0.45,0.6,1.2)" probability="0.2"/>
+    <vType id="HeavyVehicle" length="12.5" accel="2.1058" decel="5.7853" emergencyDecel="6.0276" arrivalPos="max" sigma="0.5" speedFactor="normc(1, 0.2, 0.7, 1)" probability="0.1"/>
 
     <vTypeDistribution id="typedist1" vTypes="Car Taxi Bus MediumVehicle HeavyVehicle"/>
 

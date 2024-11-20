@@ -126,6 +126,7 @@ class DecisionTransformerGymDataCollator:
 
 os.environ["WANDB_DISABLED"] = "true"
 dataset = pickle.load(open('/project/datasets/train_dataset_20181029_d23_1000_1030.pkl', 'rb'))
+print(dataset[0]['rewards'])
 collator = DecisionTransformerGymDataCollator(dataset)
 
 config = DecisionTransformerConfig(state_dim=collator.state_dim, act_dim=collator.act_dim, action_tanh=False)
