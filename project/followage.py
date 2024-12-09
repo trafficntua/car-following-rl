@@ -144,6 +144,117 @@ def lat_lon_buffer(lat: float, in_meters: float):
     return buffer_size_lat, buffer_size_lon
 
 
+def num_of_vehicles(df):
+    def all_vehicle_pairs_for_time(df_time):
+        cross_df = df_time.merge(df_time, how='cross', suffixes=('_left', '_right'))
+
+        lat_diff_m = (cross_df['lat_left'] - cross_df['lat_right']) * 111320
+        lon_diff_m = (cross_df['lon_left'] - cross_df['lon_right']) * 111320 * np.cos(np.radians(cross_df['lat_left']))
+        dist_left_right = np.sqrt(lat_diff_m**2 + lon_diff_m**2)
+        cross_df['dist_left_right'] = dist_left_right
+        return cross_df
+
+
+    def stats_for_radius(cross_df, radius):
+        cross_radius = cross_df.loc[cross_df['dist_left_right'] <= radius]
+        left_has_vehicles_radius = cross_radius.groupby('track_id_left')['track_id_right'].count()
+        mean_speed_radius = cross_radius.groupby('track_id_left')['speed_right'].mean()
+        std_speed_radius = cross_radius.groupby('track_id_left')['speed_right'].std().fillna(0)
+        mean_distance_radius = cross_radius.groupby('track_id_left')['dist_left_right'].mean()        
+        std_distance_radius = cross_radius.groupby('track_id_left')['dist_left_right'].std().fillna(0)     
+        result = pd.DataFrame({
+            'count_radius': left_has_vehicles_radius,
+            'mean_speed_radius': mean_speed_radius,
+            'std_speed_radius': std_speed_radius,
+            'mean_distance_radius': mean_distance_radius,
+            'std_distance_radius': std_distance_radius,
+        }, index=left_has_vehicles_radius.index).reset_index()
+
+        return result
+
+
+    def local_info(df):
+        num_10m = []
+        num_30m = []
+        num_50m = []
+        num_100m = []
+        for (time, ), df_time in tqdm(df.groupby(by=['time'])):
+            cross_df = all_vehicle_pairs_for_time(df_time)
+
+            # 10m
+            res_10m = stats_for_radius(cross_df, 10)
+            res_10m.rename(
+                columns={
+                    'track_id_left': 'track_id', 
+                    'count_radius': 'count_radius_10m',
+                    'mean_speed_radius': 'mean_speed_radius_10m',
+                    'std_speed_radius': 'std_speed_radius_10m',
+                    'mean_distance_radius': 'mean_distance_radius_10m',
+                    'std_distance_radius': 'std_distance_radius_10m'
+                }, 
+                inplace=True
+            )
+            res_10m['time'] = time
+            num_10m.append(res_10m)
+            
+            # 30m
+            res_30m = stats_for_radius(cross_df, 30)
+            res_30m.rename(
+                columns={
+                    'track_id_left': 'track_id', 
+                    'count_radius': 'count_radius_30m',
+                    'mean_speed_radius': 'mean_speed_radius_30m',
+                    'std_speed_radius': 'std_speed_radius_30m',
+                    'mean_distance_radius': 'mean_distance_radius_30m',
+                    'std_distance_radius': 'std_distance_radius_30m'
+                }, 
+                inplace=True
+            )
+            res_30m['time'] = time
+            num_30m.append(res_30m)
+
+            # 50m
+            res_50m = stats_for_radius(cross_df, 50)
+            res_50m.rename(
+                columns={
+                    'track_id_left': 'track_id', 
+                    'count_radius': 'count_radius_50m',
+                    'mean_speed_radius': 'mean_speed_radius_50m',
+                    'std_speed_radius': 'std_speed_radius_50m',
+                    'mean_distance_radius': 'mean_distance_radius_50m',
+                    'std_distance_radius': 'std_distance_radius_50m'
+                }, 
+                inplace=True
+            )
+            res_50m['time'] = time
+            num_50m.append(res_50m)
+
+            # 100m
+            res_100m = stats_for_radius(cross_df, 100)
+            res_100m.rename(
+                columns={
+                    'track_id_left': 'track_id', 
+                    'count_radius': 'count_radius_100m',
+                    'mean_speed_radius': 'mean_speed_radius_100m',
+                    'std_speed_radius': 'std_speed_radius_100m',
+                    'mean_distance_radius': 'mean_distance_radius_100m',
+                    'std_distance_radius': 'std_distance_radius_100m'
+                }, 
+                inplace=True
+            )
+            res_100m['time'] = time
+            num_100m.append(res_100m)
+
+        return pd.concat(num_10m, ignore_index=True), pd.concat(num_30m, ignore_index=True), pd.concat(num_50m, ignore_index=True), pd.concat(num_100m, ignore_index=True)
+
+    num_10m, num_30m, num_50m, num_100m = local_info(df)
+    df = df.merge(num_10m, how='left', left_on=['track_id', 'time'], right_on=['track_id', 'time'])
+    df = df.merge(num_30m, how='left', left_on=['track_id', 'time'], right_on=['track_id', 'time'])
+    df = df.merge(num_50m, how='left', left_on=['track_id', 'time'], right_on=['track_id', 'time'])
+    df = df.merge(num_100m, how='left', left_on=['track_id', 'time'], right_on=['track_id', 'time'])
+    return df
+
+
 def find_followage(df: pd.DataFrame):
     """
     For every time step find, for every vehicle, find the vehicle that leads.
@@ -243,6 +354,7 @@ def find_distance_between_follower_leader(follow_pairs_df: pd.DataFrame):
 
 df = csv_to_df("/project/datasets/20181029_d2_1000_1030.csv")
 df = preprocess(df)
+df = num_of_vehicles(df)
 
 # Dilation radius around 2 meters
 _, TRAJECTORY_BUFFER = lat_lon_buffer(df["lat"].mean(), 2)
@@ -266,7 +378,7 @@ follow_df = find_followage(df)
 
 # to csv
 follow_df.to_csv(
-    "/project/datasets/follow_df_20181029_d2_1000_1030.csv", index=False
+    "/project/datasets/follow_df_v2_20181029_d2_1000_1030.csv", index=False
 )
 
 # df join follow_df join df
@@ -294,5 +406,5 @@ follow_pairs_df.drop(
 
 # to csv
 follow_pairs_df.to_csv(
-    "/project/datasets/follow_pairs_20181029_d2_1000_1030.csv", index=False
+    "/project/datasets/follow_pairs_v2_20181029_d2_1000_1030.csv", index=False
 )
