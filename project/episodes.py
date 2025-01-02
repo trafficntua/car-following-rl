@@ -74,8 +74,8 @@ def get_region_global_flow_reward_per_timestep(
         "track_id_follower"
     ].count()
     vehicles_diff_per_timestep = count_vehicles_per_timestep.diff().bfill()
-    # TODO: rethink this
-    reward_per_timestep = -(vehicles_diff_per_timestep != 0).astype(int)
+    # reward_per_timestep = vehicles_diff_per_timestep.where(vehicles_diff_per_timestep < 0, 0).abs()
+    reward_per_timestep = -vehicles_diff_per_timestep
     return reward_per_timestep
 
 
@@ -232,7 +232,7 @@ subregions = {
 
 for region in ["d2", "d3"]:
     follow_pairs_df = pd.read_csv(
-        f"/project/datasets/follow_pairs_20181029_{region}_1000_1030.csv",
+        f"/project/datasets/follow_pairs_v2_20181029_{region}_1000_1030.csv",
     )
     follow_pairs_df["leader_follower_dist"] = follow_pairs_df[
         "leader_follower_dist"
@@ -248,5 +248,5 @@ for region in ["d2", "d3"]:
     )
 
     episodes_df.to_csv(
-        f"/project/datasets/episodes_20181029_{region}_1000_1030.csv", index=False
+        f"/project/datasets/episodes_v2_20181029_{region}_1000_1030.csv", index=False
     )
