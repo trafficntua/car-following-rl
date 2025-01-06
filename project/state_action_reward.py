@@ -9,38 +9,21 @@ from tqdm import tqdm
 sys.path.append("/usr/share/sumo/tools")
 import traci
 
-traci.start(["sumo", "-c", "./simulation2/basic_network.sumocfg"])
+traci.start(["sumo", "-c", "./big_simulation/conf.sumocfg"])
 traci.vehicle.add(
     "follower",
-    routeID="r1",
-    departLane="first",
-    typeID='Car',
-    departPos=100,
+    routeID="",
+    typeID='warm_up_car',
 )
 traci.simulationStep()
 
 
 def compute_vsafe_on_dataset(
-    follower_type: str,
-    leader_type: str,
     bumper_to_bumper_gap,
     follower_speed,
     leader_speed,
 ):
-    vehicle_type_decels = {
-        "Car": 4.6751,
-        "Taxi": 4.7778,
-        "Bus": 2.3356,
-        "MediumVehicle": 7.5270,
-        "HeavyVehicle": 5.7853,
-    }
-    clean_follower_type = follower_type.replace(' ', '')
-    clean_leader_type = leader_type.replace(' ', '')
-    # leader_max_comfortable_decel
-    leader_max_comfortable_decel = vehicle_type_decels[clean_leader_type]
-
-    # follow speed
-    traci.vehicle.setType('follower', clean_follower_type)
+    leader_max_comfortable_decel = 4.5
 
     vsafe = traci.vehicle.getFollowSpeed(
         "follower",
@@ -52,15 +35,15 @@ def compute_vsafe_on_dataset(
     return vsafe
 
 # test 
-print(compute_vsafe_on_dataset("Car", "MediumVehicle", 10, 20, 20))
-print(compute_vsafe_on_dataset("Car", "Bus", 10, 20, 20))
+print(compute_vsafe_on_dataset(10, 20, 20))
+print(compute_vsafe_on_dataset(10, 20, 20))
 
 episodes_d2 = pd.read_csv(
-    "/project/datasets/episodes_20181029_d2_1000_1030.csv",
+    "/project/datasets/episodes_v2_20181029_d2_1000_1030.csv",
 )
 
 episodes_d3 = pd.read_csv(
-    "/project/datasets/episodes_20181029_d3_1000_1030.csv",
+    "/project/datasets/episodes_v2_20181029_d3_1000_1030.csv",
 )
 
 episodes_df = pd.concat([episodes_d2, episodes_d3], ignore_index=True)
@@ -78,10 +61,21 @@ episodes_df = episodes_df.loc[
 # m/s
 episodes_df.loc[:, "speed_follower_m_s"] = episodes_df["speed_follower"] / 3.6
 episodes_df.loc[:, "speed_leader_m_s"] = episodes_df["speed_leader"] / 3.6
+episodes_df.loc[:, "speed_follower_m_s"] = episodes_df["speed_follower"] / 3.6
+episodes_df.loc[:, "speed_leader_m_s"] = episodes_df["speed_leader"] / 3.6
+
+episodes_df.loc[:, "mean_speed_radius_10m_follower_m_s"] = episodes_df["mean_speed_radius_10m_follower"] / 3.6
+episodes_df.loc[:, "std_speed_radius_10m_follower_m_s"] = episodes_df["std_speed_radius_10m_follower"] / 3.6
+episodes_df.loc[:, "mean_speed_radius_30m_follower_m_s"] = episodes_df["mean_speed_radius_30m_follower"] / 3.6
+episodes_df.loc[:, "std_speed_radius_30m_follower_m_s"] = episodes_df["std_speed_radius_30m_follower"] / 3.6
+episodes_df.loc[:, "mean_speed_radius_50m_follower_m_s"] = episodes_df["mean_speed_radius_50m_follower"] / 3.6
+episodes_df.loc[:, "std_speed_radius_50m_follower_m_s"] = episodes_df["std_speed_radius_50m_follower"] / 3.6
+episodes_df.loc[:, "mean_speed_radius_100m_follower_m_s"] = episodes_df["mean_speed_radius_100m_follower"] / 3.6
+episodes_df.loc[:, "std_speed_radius_100m_follower_m_s"] = episodes_df["std_speed_radius_100m_follower"] / 3.6
 
 # vehicle type stats
 vehicle_lengths = pd.Series(
-    [5, 5, 12.5, 5.83, 12.5, 2.5],
+    [4.5, 4.5, 4.5, 4.5, 4.5, 4.5],
     index=[" Car", " Taxi", " Bus", " Medium Vehicle", " Heavy Vehicle", " Motorcycle"],
     name="length",
 )
@@ -111,14 +105,12 @@ gap = (
     - episodes_df["vehicle_type_follower"].map(vehicle_lengths) / 2
     - episodes_df["vehicle_type_leader"].map(vehicle_lengths) / 2
 )
-gap[gap < 0] = 0.1
+gap[gap < 0] = 0.00001
 episodes_df.loc[:, "leader_follower_gap"] = gap
 
 # local reward
 episodes_df["v_safe"] = episodes_df.apply(
     lambda row: compute_vsafe_on_dataset(
-        row['vehicle_type_follower'][1:],
-        row['vehicle_type_leader'][1:],
         row['leader_follower_gap'],
         row['speed_follower_m_s'],
         row['speed_leader_m_s'],
@@ -136,8 +128,14 @@ episodes_df.loc[episodes_df['speed_leader_m_s'] <= (1 - sigma) * episodes_df['v_
 episodes_df.loc[episodes_df['speed_leader_m_s'] >= (1 + sigma) * episodes_df['v_safe'], 'local_reward'] = -1
 episodes_df['local_reward'] = episodes_df['local_reward'] * (episodes_df['green_light'] | episodes_df['leader_in_followers_subregion']).astype(int)
 
+# global reward
+episodes_df['global_reward'] = episodes_df['flow_reward'] * episodes_df['green_light'].astype(int)
+
 # total reward
-episodes_df["total_reward"] = episodes_df["local_reward"]
+episodes_df["total_reward"] = episodes_df["local_reward"] + episodes_df["global_reward"]
+
+# green light as int
+episodes_df["green_light_int"] = episodes_df["green_light"].astype(int)
 
 # dataset
 observations = episodes_df[
@@ -146,12 +144,28 @@ observations = episodes_df[
         "leader_follower_gap",
         "speed_follower_m_s",
         "speed_leader_m_s",
+        "count_radius_30m_follower",
+        "mean_speed_radius_30m_follower_m_s",
+        "std_speed_radius_30m_follower_m_s",
+        "mean_distance_radius_30m_follower",
+        "std_distance_radius_30m_follower",
+        "green_light_int",
     ]
 ]
 
 observations_dt = (
     observations.groupby("episode_id")[
-        ["leader_follower_gap", "speed_follower_m_s", "speed_leader_m_s"]
+        [
+            "leader_follower_gap", 
+            "speed_follower_m_s", 
+            "speed_leader_m_s",
+            "count_radius_30m_follower",
+            "mean_speed_radius_30m_follower_m_s",
+            "std_speed_radius_30m_follower_m_s",
+            "mean_distance_radius_30m_follower",
+            "std_distance_radius_30m_follower",
+            "green_light_int",
+        ]
     ]
     .apply(lambda g: g.values.tolist())
     .to_list()
@@ -181,7 +195,7 @@ train_dataset = [
 pickle.dump(
     train_dataset,
     open(
-        "/project/datasets/train_dataset_20181029_d23_1000_1030.pkl",
+        "/project/datasets/train_dataset_v2_20181029_d23_1000_1030.pkl",
         "wb",
     ),
 )
