@@ -61,10 +61,8 @@ def predict(traj, TARGET_RETURN):
 model = TrainableDT.from_pretrained('/project/model/weights/')
 
 device = "cpu"
-#state_mean = np.array([28.62879043, 7.06839248, 7.12274401, 0.], dtype=np.float32)
-#state_std = np.array([33.54715525, 4.09763968, 4.10320888, 1.], dtype=np.float32)
-state_mean = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-state_std = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+state_mean = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+state_std = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32)
 state_dim = model.config.state_dim
 act_dim = model.config.act_dim
 

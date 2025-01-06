@@ -36,13 +36,8 @@ class DecisionTransformerGymDataCollator:
         self.n_traj = len(traj_lens)
         states = np.vstack(states)
         self.state_mean, self.state_std = np.mean(states, axis=0), np.std(states, axis=0) + 1e-6
-        self.state_mean[0] = 0
-        self.state_std[0] = 1
-        self.state_mean[1] = 0
-        self.state_std[1] = 1
-        self.state_mean[2] = 0
-        self.state_std[2] = 1
-
+        self.state_mean = np.zeros(self.state_mean.shape)
+        self.state_std = np.ones(self.state_std.shape)
 
         print("self.state_mean", self.state_mean)
         print("self.state_std", self.state_std)
@@ -125,7 +120,7 @@ class DecisionTransformerGymDataCollator:
     
 
 os.environ["WANDB_DISABLED"] = "true"
-dataset = pickle.load(open('/project/datasets/train_dataset_20181029_d23_1000_1030.pkl', 'rb'))
+dataset = pickle.load(open('/project/datasets/train_dataset_v2_20181029_d23_1000_1030.pkl', 'rb'))
 print(dataset[0]['rewards'])
 collator = DecisionTransformerGymDataCollator(dataset)
 
