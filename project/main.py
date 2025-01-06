@@ -156,8 +156,12 @@ def simulate(ignore_vehicle_ids: set[str]):
         edge_id: len(traci.edge.getLastStepVehicleIDs(edge_id))
         for edge_id in traci.edge.getIDList()
     }
+    init_time = traci.simulation.getTime()
+    print(f'Start control at time: {init_time}')
+    curr_time = init_time
 
-    while len(episodes_done) < 100:
+    while curr_time - init_time < 60:
+        print(f'Time: {curr_time}')
         # run one step
         traci.simulationStep()
 
@@ -253,28 +257,30 @@ def simulate(ignore_vehicle_ids: set[str]):
 
         episodes_done = set(trajectories.keys()) - active_episodes
         prev_edge_vehicle_count = curr_edge_vehicle_count
-
-    return trajectories, episodes_done
+        curr_time = traci.simulation.getTime()
+    return {k: v for k, v in trajectories.items() if k in episodes_done}
 
 
 def stats(traj):
     rewards_1000_ep = []
     local_rewards_1000_ep = []
     global_rewards_1000_ep = []
+    ep_len_1000_ep = []
     for i, (vehID, traj) in enumerate(trajectories.items()):
         rewards_1000_ep.append(sum([r for r in traj["rewards"]]))
         local_rewards_1000_ep.append(sum([r for r in traj["local_rewards"]]))
         global_rewards_1000_ep.append(sum([r for r in traj["global_rewards"]]))
+        ep_len_1000_ep.append(len([r for r in traj["global_rewards"]]))
     print(f"Mean 100 episode reward = {sum(rewards_1000_ep) / len(rewards_1000_ep)}")
     print(f"Mean 100 episode local reward = {sum(local_rewards_1000_ep) / len(local_rewards_1000_ep)}")
     print(f"Mean 100 episode global reward = {sum(global_rewards_1000_ep) / len(global_rewards_1000_ep)}")
+    print(f"Mean 100 episode length = {sum(ep_len_1000_ep) / len(ep_len_1000_ep)}")
 
 
 # traci.start(["sumo", "-c", "./simulation2/basic_network.sumocfg"])
 traci.start(["sumo", "-c", "./big_simulation/conf.sumocfg"])
 ignored = warmup()
-trajectories, episodes_done = simulate(ignored)
-trajectories = {k: v for k, v in trajectories.items() if k in episodes_done}
+trajectories = simulate(ignored)
 stats(trajectories)
 
 traci.close()
