@@ -3,19 +3,20 @@ from typing import Any
 import pickle
 
 sys.path.append("/usr/share/sumo/tools")
-from model.predict_action import predict
+# from model.predict_action import predict # Comment SINGLE
+from model.batch_predict_action import batch_predict
 import traci
 import pandas as pd
 
 SIGMA = 0.2
 RADIUS_NEIGHBOUR = 30
-
+DO_CONTROL = True
 
 def warmup():
     previous_vehicle_set = set()
     global_vehicles_exited = set()
     global_vehicles_entered = set()
-    while len(global_vehicles_exited) < 1:
+    while len(global_vehicles_exited) < 100:
         traci.simulationStep()
         current_vehicle_set = set(traci.vehicle.getIDList())
         vehicles_entered = current_vehicle_set - previous_vehicle_set
@@ -160,7 +161,7 @@ def simulate(ignore_vehicle_ids: set[str]):
     print(f'Start control at time: {init_time}')
     curr_time = init_time
 
-    while curr_time - init_time < 60:
+    while curr_time - init_time < 60 * 2:
         print(f'Time: {curr_time}')
         # run one step
         traci.simulationStep()
@@ -189,6 +190,8 @@ def simulate(ignore_vehicle_ids: set[str]):
 
         # construct a step
         active_episodes = set()
+        batch = {}
+        # actions_single = {} # Comment SINGLE
         for vehicle_id, _ in veh_state_follower.items():
             if vehicle_id in ignore_vehicle_ids:
                 continue
@@ -252,13 +255,27 @@ def simulate(ignore_vehicle_ids: set[str]):
 
             # the sauce
             if len(trajectories[episode_id]['rewards']) > 20:
-                pred_act = predict(trajectories[episode_id], 0)
-                traci.vehicle.setAcceleration(vehicle_id, pred_act, 0.04)
+                batch[vehicle_id] = episode_id
+                # pred_act = predict(trajectories[episode_id], 0) # Comment SINGLE
+                # actions_single[vehicle_id] = pred_act # Comment SINGLE
+                
+        # print(f'actions_single {curr_time}', actions_single) # Comment SINGLE
 
+        # batch predict and control
+        if len(batch) and DO_CONTROL:
+            batch_preds = batch_predict([trajectories[episode_id] for _, episode_id in batch.items()], 0)
+            actions_batch = {vehicle_id: pa[0] for vehicle_id, pa in zip(batch.keys(), batch_preds)}
+            print(f'actions_batch  {curr_time}', actions_batch)
+
+            # control predicted actions
+            for vehicle_id, act in actions_batch.items():
+                traci.vehicle.setAcceleration(vehicle_id, act, 0.04)
+        
         episodes_done = set(trajectories.keys()) - active_episodes
         prev_edge_vehicle_count = curr_edge_vehicle_count
         curr_time = traci.simulation.getTime()
-    return {k: v for k, v in trajectories.items() if k in episodes_done}
+
+    return {k: v for k, v in trajectories.items() if k in episodes_done and len(trajectories[k]['observations']) >= 128}
 
 
 def stats(traj):
@@ -271,10 +288,10 @@ def stats(traj):
         local_rewards_1000_ep.append(sum([r for r in traj["local_rewards"]]))
         global_rewards_1000_ep.append(sum([r for r in traj["global_rewards"]]))
         ep_len_1000_ep.append(len([r for r in traj["global_rewards"]]))
-    print(f"Mean 100 episode reward = {sum(rewards_1000_ep) / len(rewards_1000_ep)}")
-    print(f"Mean 100 episode local reward = {sum(local_rewards_1000_ep) / len(local_rewards_1000_ep)}")
-    print(f"Mean 100 episode global reward = {sum(global_rewards_1000_ep) / len(global_rewards_1000_ep)}")
-    print(f"Mean 100 episode length = {sum(ep_len_1000_ep) / len(ep_len_1000_ep)}")
+    print(f"Mean episode reward = {sum(rewards_1000_ep) / len(rewards_1000_ep)}")
+    print(f"Mean episode local reward = {sum(local_rewards_1000_ep) / len(local_rewards_1000_ep)}")
+    print(f"Mean episode global reward = {sum(global_rewards_1000_ep) / len(global_rewards_1000_ep)}")
+    print(f"Mean episode length = {sum(ep_len_1000_ep) / len(ep_len_1000_ep)}")
 
 
 # traci.start(["sumo", "-c", "./simulation2/basic_network.sumocfg"])

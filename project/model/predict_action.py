@@ -16,6 +16,7 @@ def get_action(model: TrainableDT, states, actions, rewards, returns_to_go, time
     actions = actions[:, -model.config.max_length :]
     returns_to_go = returns_to_go[:, -model.config.max_length :]
     timesteps = timesteps[:, -model.config.max_length :]
+
     padding = model.config.max_length - states.shape[1]
     # pad all tokens to sequence length
     attention_mask = torch.cat([torch.zeros(padding), torch.ones(states.shape[1])])
