@@ -3,13 +3,13 @@ from typing import Any
 import pickle
 
 sys.path.append("/usr/share/sumo/tools")
-# from model.predict_action import predict # Comment SINGLE
+#from model.predict_action import predict # Comment SINGLE
 from model.batch_predict_action import batch_predict
 import traci
 import pandas as pd
 
 SIGMA = 0.2
-RADIUS_NEIGHBOUR = 30
+RADIUS_NEIGHBOUR = 100
 DO_CONTROL = True
 
 def warmup():
@@ -131,7 +131,7 @@ def get_flow_reward(
     flow_rewards = {}
     for edge_id, _ in curr_edge_vehicle_count.items():
         diff = curr_edge_vehicle_count[edge_id] - prev_edge_vehicle_count[edge_id]
-        flow_rewards[edge_id] = -diff
+        flow_rewards[edge_id] = 1 if diff < 0 else 0
     return flow_rewards
 
 
@@ -161,6 +161,10 @@ def simulate(ignore_vehicle_ids: set[str]):
     print(f'Start control at time: {init_time}')
     curr_time = init_time
 
+    previous_vehicle_set = set()
+    global_vehicles_exited = set()
+    global_vehicles_entered = set()
+
     while curr_time - init_time < 60 * 2:
         print(f'Time: {curr_time}')
         # run one step
@@ -168,6 +172,17 @@ def simulate(ignore_vehicle_ids: set[str]):
 
         # all vehicles currently in the simulation
         vehicle_id_list = list(traci.vehicle.getIDList())
+
+        # keep track of vehicles in-out
+        current_vehicle_set = set(vehicle_id_list) - ignore_vehicle_ids
+        vehicles_entered = current_vehicle_set - previous_vehicle_set
+        vehicles_exited = previous_vehicle_set - current_vehicle_set
+
+        if vehicles_entered:
+            global_vehicles_entered.update(vehicles_entered)
+
+        if vehicles_exited:
+            global_vehicles_exited.update(vehicles_exited)
 
         # no lane changes for all vehicles
         [
@@ -191,7 +206,7 @@ def simulate(ignore_vehicle_ids: set[str]):
         # construct a step
         active_episodes = set()
         batch = {}
-        # actions_single = {} # Comment SINGLE
+        #actions_single = {} # Comment SINGLE
         for vehicle_id, _ in veh_state_follower.items():
             if vehicle_id in ignore_vehicle_ids:
                 continue
@@ -256,10 +271,10 @@ def simulate(ignore_vehicle_ids: set[str]):
             # the sauce
             if len(trajectories[episode_id]['rewards']) > 20:
                 batch[vehicle_id] = episode_id
-                # pred_act = predict(trajectories[episode_id], 0) # Comment SINGLE
-                # actions_single[vehicle_id] = pred_act # Comment SINGLE
+                #pred_act = predict(trajectories[episode_id], 0) # Comment SINGLE
+                #actions_single[vehicle_id] = pred_act # Comment SINGLE
                 
-        # print(f'actions_single {curr_time}', actions_single) # Comment SINGLE
+        #print(f'actions_single {curr_time}', actions_single) # Comment SINGLE
 
         # batch predict and control
         if len(batch) and DO_CONTROL:
@@ -274,8 +289,8 @@ def simulate(ignore_vehicle_ids: set[str]):
         episodes_done = set(trajectories.keys()) - active_episodes
         prev_edge_vehicle_count = curr_edge_vehicle_count
         curr_time = traci.simulation.getTime()
-
-    return {k: v for k, v in trajectories.items() if k in episodes_done and len(trajectories[k]['observations']) >= 128}
+        previous_vehicle_set = current_vehicle_set
+    return {k: v for k, v in trajectories.items() if k in episodes_done and len(trajectories[k]['observations']) >= 128}, global_vehicles_exited, global_vehicles_entered
 
 
 def stats(traj):
@@ -297,14 +312,15 @@ def stats(traj):
 # traci.start(["sumo", "-c", "./simulation2/basic_network.sumocfg"])
 traci.start(["sumo", "-c", "./big_simulation/conf.sumocfg"])
 ignored = warmup()
-trajectories = simulate(ignored)
+trajectories, vehicles_exited, vehicles_entered = simulate(ignored)
+print(f'Vehicles entered: {len(vehicles_entered)}, Vehicles exited: {len(vehicles_exited)}, Throughtput: {(len(vehicles_entered) - len(vehicles_exited)) / 2}')
 stats(trajectories)
 
 traci.close()
 pickle.dump(
     trajectories,
     open(
-        "/project/datasets/test_results_ours_v2_20181029_d23_1000_1030.pkl",
+        "/project/datasets/test_results_ours_v5_100m_20181029_d23_1000_1030.pkl",
         "wb",
     ),
 )

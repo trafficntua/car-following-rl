@@ -59,7 +59,7 @@ def predict(traj, TARGET_RETURN):
     return next_action.item()
 
 # weights
-model = TrainableDT.from_pretrained('/project/model/weights/')
+model = TrainableDT.from_pretrained('/project/model/weights_v5_100m/')
 
 device = "cpu"
 state_mean = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)

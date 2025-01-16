@@ -39,11 +39,11 @@ print(compute_vsafe_on_dataset(10, 20, 20))
 print(compute_vsafe_on_dataset(10, 20, 20))
 
 episodes_d2 = pd.read_csv(
-    "/project/datasets/episodes_v2_20181029_d2_1000_1030.csv",
+    "/project/datasets/episodes_v5_20181029_d2_1000_1030.csv",
 )
 
 episodes_d3 = pd.read_csv(
-    "/project/datasets/episodes_v2_20181029_d3_1000_1030.csv",
+    "/project/datasets/episodes_v5_20181029_d3_1000_1030.csv",
 )
 
 episodes_df = pd.concat([episodes_d2, episodes_d3], ignore_index=True)
@@ -144,11 +144,11 @@ observations = episodes_df[
         "leader_follower_gap",
         "speed_follower_m_s",
         "speed_leader_m_s",
-        "count_radius_30m_follower",
-        "mean_speed_radius_30m_follower_m_s",
-        "std_speed_radius_30m_follower_m_s",
-        "mean_distance_radius_30m_follower",
-        "std_distance_radius_30m_follower",
+        "count_radius_100m_follower",
+        "mean_speed_radius_100m_follower_m_s",
+        "std_speed_radius_100m_follower_m_s",
+        "mean_distance_radius_100m_follower",
+        "std_distance_radius_100m_follower",
         "green_light_int",
     ]
 ]
@@ -159,11 +159,11 @@ observations_dt = (
             "leader_follower_gap", 
             "speed_follower_m_s", 
             "speed_leader_m_s",
-            "count_radius_30m_follower",
-            "mean_speed_radius_30m_follower_m_s",
-            "std_speed_radius_30m_follower_m_s",
-            "mean_distance_radius_30m_follower",
-            "std_distance_radius_30m_follower",
+            "count_radius_100m_follower",
+            "mean_speed_radius_100m_follower_m_s",
+            "std_speed_radius_100m_follower_m_s",
+            "mean_distance_radius_100m_follower",
+            "std_distance_radius_100m_follower",
             "green_light_int",
         ]
     ]
@@ -195,7 +195,7 @@ train_dataset = [
 pickle.dump(
     train_dataset,
     open(
-        "/project/datasets/train_dataset_v2_20181029_d23_1000_1030.pkl",
+        "/project/datasets/train_dataset_v5_100m_20181029_d23_1000_1030.pkl",
         "wb",
     ),
 )

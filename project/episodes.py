@@ -74,8 +74,20 @@ def get_region_global_flow_reward_per_timestep(
         "track_id_follower"
     ].count()
     vehicles_diff_per_timestep = count_vehicles_per_timestep.diff().bfill()
-    # reward_per_timestep = vehicles_diff_per_timestep.where(vehicles_diff_per_timestep < 0, 0).abs()
-    reward_per_timestep = -vehicles_diff_per_timestep
+    # v5
+    reward_per_timestep = vehicles_diff_per_timestep.where(vehicles_diff_per_timestep < 0, 0).abs()
+
+    # v2 
+    # reward_per_timestep = -vehicles_diff_per_timestep
+
+    # v3
+    # reward_per_timestep = -vehicles_diff_per_timestep.where(vehicles_diff_per_timestep >= 0, 0)
+
+    # v4
+    # reward_per_timestep = vehicles_diff_per_timestep.where(vehicles_diff_per_timestep < 0, 0)
+    # reward_per_timestep[reward_per_timestep < 0] = 1
+    # reward_per_timestep = reward_per_timestep - 1
+
     return reward_per_timestep
 
 
@@ -248,5 +260,5 @@ for region in ["d2", "d3"]:
     )
 
     episodes_df.to_csv(
-        f"/project/datasets/episodes_v2_20181029_{region}_1000_1030.csv", index=False
+        f"/project/datasets/episodes_v5_20181029_{region}_1000_1030.csv", index=False
     )

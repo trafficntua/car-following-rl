@@ -99,7 +99,7 @@ def batch_predict(batch_trajectories, TARGET_RETURN):
 
 
 # weights
-model = TrainableDT.from_pretrained("/project/model/weights/")
+model = TrainableDT.from_pretrained("/project/model/weights_v5_100m/")
 
 device = "cpu"
 state_mean = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
