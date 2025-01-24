@@ -22,19 +22,19 @@ def get_action(model: TrainableDT, states, actions, rewards, returns_to_go, time
     attention_mask = torch.cat(
         [torch.zeros((batch_size, padding)), torch.ones((batch_size, states.shape[1]))],
         dim=1,
-    ).to(dtype=torch.long)
+    ).to(dtype=torch.long, device=device)
 
     states = torch.cat(
-        [torch.zeros((batch_size, padding, model.config.state_dim)), states], dim=1
+        [torch.zeros((batch_size, padding, model.config.state_dim), device=device), states], dim=1
     ).float()
     actions = torch.cat(
-        [torch.zeros((batch_size, padding, model.config.act_dim)), actions], dim=1
+        [torch.zeros((batch_size, padding, model.config.act_dim), device=device), actions], dim=1
     ).float()
     returns_to_go = torch.cat(
-        [torch.zeros((batch_size, padding, 1)), returns_to_go], dim=1
+        [torch.zeros((batch_size, padding, 1), device=device), returns_to_go], dim=1
     ).float()
     timesteps = torch.cat(
-        [torch.zeros((batch_size, padding), dtype=torch.long), timesteps], dim=1
+        [torch.zeros((batch_size, padding), device=device, dtype=torch.long), timesteps], dim=1
     )
 
     # Perform batch inference
@@ -86,7 +86,7 @@ def batch_predict(batch_trajectories, TARGET_RETURN):
         [TARGET_RETURN] * batch_size, device=device, dtype=torch.float32
     ).reshape(batch_size, 1)
     target_return = target_return.expand(-1, max_seq_len).unsqueeze(-1)
-    target_return = target_return - torch.cumsum(rewards, dim=1).unsqueeze(-1)
+    target_return = target_return - torch.cumsum(rewards, dim = 1).unsqueeze(-1)
 
     # Normalize states
     states = (states - state_mean) / state_std
@@ -98,10 +98,49 @@ def batch_predict(batch_trajectories, TARGET_RETURN):
     return next_actions.tolist()
 
 
-# weights
-model = TrainableDT.from_pretrained("/project/model/weights_v5_100m/")
+def batch_predict_v2(batch_trajectories, TARGET_RETURN):
 
-device = "cpu"
+    batch_size = len(batch_trajectories)
+
+    # Prepare padded tensors
+    states = torch.zeros(
+        (batch_size, model.config.max_length, state_dim), device=device, dtype=torch.float32
+    )
+    actions = torch.zeros(
+        (batch_size, model.config.max_length, act_dim), device=device, dtype=torch.float32
+    )
+    rewards = torch.zeros(
+        (batch_size, model.config.max_length), device=device, dtype=torch.float32
+    )
+    timesteps = torch.zeros(
+        (batch_size, model.config.max_length), device=device, dtype=torch.long
+    )
+    target_return = torch.zeros(
+        (batch_size, model.config.max_length), device=device, dtype=torch.long
+    )
+
+    # Populate the padded tensors with actual data, padding at the beginning
+    for i, traj in enumerate(batch_trajectories):
+        states[i,:] = torch.tensor(traj["observations"], device=device)
+        actions[i,:] = torch.tensor(traj["actions"], device=device)
+        rewards[i,:] = torch.tensor(traj["rewards"], device=device)
+        timesteps[i,:] = torch.tensor(traj["t_steps"], device=device)
+        target_return[i,:] = torch.tensor(traj["target_return"], device=device)
+
+    # Normalize states
+    states = (states - state_mean) / state_std
+
+    # Get batch predictions
+    next_actions = get_action(model, states, actions, rewards, target_return.unsqueeze(-1), timesteps)
+
+    # Convert to list of predicted actions
+    return next_actions.tolist()
+
+
+# weights
+model = TrainableDT.from_pretrained("./model/weights_v5_100m/")
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 state_mean = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
 state_std = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32)
 state_dim = model.config.state_dim

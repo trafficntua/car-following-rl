@@ -3,3 +3,4 @@ big_simulation/
 .ipynb_checkpoints/
 __pycache__/
 output/
+marios_net/

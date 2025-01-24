@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2025-01-24 19:05:17 by Eclipse SUMO libsumo Version 1.20.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/libsumoConfiguration.xsd">
+
+    <input>
+        <net-file value="./marios_net/athens_net_control.net.xml"/>
+        <route-files value="./marios_net/macro_routes_peak_demand_0.8_1.0_900_5400_0.7.rou.xml"/>
+    </input>
+
+    <output>
+        <tripinfo-output.write-unfinished value="true"/>
+        <tripinfo-output.write-undeparted value="true"/>
+        <statistic-output value="./sumo_results/statistics_control.xml"/>
+    </output>
+
+    <time>
+        <begin value="27900"/>
+        <step-length value="1"/>
+    </time>
+
+    <processing>
+        <no-internal-links value="true"/>
+        <ignore-junction-blocker value="60"/>
+        <collision.action value="none"/>
+        <scale value="0.7"/>
+        <time-to-teleport value="300"/>
+    </processing>
+
+    <routing>
+        <device.rerouting.synchronize value="true"/>
+    </routing>
+
+    <report>
+        <no-warnings value="True"/>
+        <duration-log.statistics value="true"/>
+        <no-step-log value="True"/>
+    </report>
+
+    <random_number>
+        <seed value="0"/>
+    </random_number>
+
+    <gui_only>
+        <quit-on-end value="true"/>
+        <start value="true"/>
+    </gui_only>
+
+</configuration>
+-->
+
+<statistics xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/statistic_file.xsd">
+    <performance clockBegin="1737738317.76" clockEnd="1737739822.42" clockDuration="1504.66" traciDuration="2.87" realTimeFactor="19.80" vehicleUpdatesPerSecond="3810.87" personUpdatesPerSecond="0.00" begin="0.00" end="29790.00" duration="29790.00"/>
+    <vehicles loaded="16293" inserted="9967" running="5497" waiting="718"/>
+    <teleports total="67" jam="6" yield="38" wrongLane="23"/>
+    <safety collisions="0" emergencyStops="0" emergencyBraking="12"/>
+    <persons loaded="0" running="0" jammed="0"/>
+    <personTeleports total="0" abortWait="0" wrongDest="0"/>
+    <vehicleTripStatistics count="5441" routeLength="967.58" speed="2.84" duration="435.87" waitingTime="276.40" timeLoss="348.44" departDelay="13.01" departDelayWaiting="265.38" totalTravelTime="2371549.00" totalDepartDelay="264771.73"/>
+    <pedestrianStatistics number="0" routeLength="0.00" duration="0.00" timeLoss="0.00"/>
+    <rideStatistics number="0"/>
+    <transportStatistics number="0"/>
+</statistics>

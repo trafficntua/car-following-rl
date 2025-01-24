@@ -15,6 +15,7 @@ SIMU_MINS = 5
 MAX_EPISODE_LENGTH = 4095
 
 def warmup():
+    
     previous_vehicle_set = set()
     global_vehicles_exited = set()
     global_vehicles_entered = set()
