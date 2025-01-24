@@ -10,7 +10,9 @@ import pandas as pd
 
 SIGMA = 0.2
 RADIUS_NEIGHBOUR = 100
-DO_CONTROL = True
+DO_CONTROL = False
+SIMU_MINS = 5
+MAX_EPISODE_LENGTH = 4095
 
 def warmup():
     previous_vehicle_set = set()
@@ -146,6 +148,8 @@ def get_local_reward(follower_speed, v_safe):
 
 
 def simulate(ignore_vehicle_ids: set[str]):
+    episode_stats = []
+
     # keys are episodes, values are lists of state-action-rewards
     trajectories: dict[str, Any] = {}
 
@@ -158,15 +162,16 @@ def simulate(ignore_vehicle_ids: set[str]):
         for edge_id in traci.edge.getIDList()
     }
     init_time = traci.simulation.getTime()
-    print(f'Start control at time: {init_time}')
+    print(f'Start control at time: {init_time} with {len(traci.vehicle.getIDList())} vehicles in the network(ignored)')
     curr_time = init_time
 
     previous_vehicle_set = set()
     global_vehicles_exited = set()
     global_vehicles_entered = set()
 
-    while curr_time - init_time < 60 * 2:
-        print(f'Time: {curr_time}')
+    while curr_time - init_time < 60 * SIMU_MINS:
+        if (curr_time - init_time) % 60 == 0: 
+            print(f'Time: {curr_time}, time elapsed: {(curr_time - init_time)/60} mins, vehs in network: {len(previous_vehicle_set)}')
         # run one step
         traci.simulationStep()
 
@@ -213,6 +218,12 @@ def simulate(ignore_vehicle_ids: set[str]):
 
             current_edge_of_vehicle = traci.vehicle.getRoadID(vehicle_id)
             episode_id = f"{current_edge_of_vehicle}_{vehicle_id}"
+
+            # episodes with MAX_EPISODE_LENGTH steps reached are considered inactive 
+            # control for them will resume in the next step
+            if episode_id in trajectories and len(trajectories[episode_id]['rewards']) >= MAX_EPISODE_LENGTH:
+                continue
+
             active_episodes.add(episode_id)
 
             if episode_id not in trajectories:
@@ -278,19 +289,47 @@ def simulate(ignore_vehicle_ids: set[str]):
 
         # batch predict and control
         if len(batch) and DO_CONTROL:
-            batch_preds = batch_predict([trajectories[episode_id] for _, episode_id in batch.items()], 0)
-            actions_batch = {vehicle_id: pa[0] for vehicle_id, pa in zip(batch.keys(), batch_preds)}
-            print(f'actions_batch  {curr_time}', actions_batch)
+            try: 
+                batch_preds = batch_predict([trajectories[episode_id] for _, episode_id in batch.items()], 0)
+                actions_batch = {vehicle_id: pa[0] for vehicle_id, pa in zip(batch.keys(), batch_preds)}
+                # print(f'actions_batch  {curr_time}', actions_batch)
 
-            # control predicted actions
-            for vehicle_id, act in actions_batch.items():
-                traci.vehicle.setAcceleration(vehicle_id, act, 0.04)
-        
+                # control predicted actions
+                for vehicle_id, act in actions_batch.items():
+                    traci.vehicle.setAcceleration(vehicle_id, act, 0.04)
+            except Exception:
+                max_len = max([len(trajectories[episode_id]['rewards']) for _, episode_id in batch.items()])
+                print(f'Error while running batch_predict, time: {curr_time}; Max episode len: {max_len}')
+
         episodes_done = set(trajectories.keys()) - active_episodes
+
+        # delete traj key, keep episode stats
+        for ep in episodes_done:
+            traj = trajectories[ep]
+            if len(traj['observations']) >= 20:
+                ep_rew_total = sum([r for r in traj["rewards"]])
+                ep_rew_local = sum([r for r in traj["local_rewards"]])
+                ep_rew_global = sum([r for r in traj["global_rewards"]])
+                ep_len = len([r for r in traj["global_rewards"]])
+                episode_stats.append({
+                    "episode_id": ep,
+                    "ep_rew_total": ep_rew_total,
+                    "ep_rew_local": ep_rew_local,
+                    "ep_rew_global": ep_rew_global,
+                    "ep_len": ep_len
+                })
+            del trajectories[ep]
+ 
+
         prev_edge_vehicle_count = curr_edge_vehicle_count
         curr_time = traci.simulation.getTime()
         previous_vehicle_set = current_vehicle_set
-    return {k: v for k, v in trajectories.items() if k in episodes_done and len(trajectories[k]['observations']) >= 128}, global_vehicles_exited, global_vehicles_entered
+
+    final_time = traci.simulation.getTime()
+    print(f'Finish simulation at time: {final_time} with {len(traci.vehicle.getIDList())} vehicles still in the network')
+
+    # return {k: v for k, v in trajectories.items() if k in episodes_done and len(trajectories[k]['observations']) >= 20}, global_vehicles_exited, global_vehicles_entered
+    return episode_stats, global_vehicles_exited, global_vehicles_entered
 
 
 def stats(traj):
@@ -298,11 +337,12 @@ def stats(traj):
     local_rewards_1000_ep = []
     global_rewards_1000_ep = []
     ep_len_1000_ep = []
-    for i, (vehID, traj) in enumerate(trajectories.items()):
-        rewards_1000_ep.append(sum([r for r in traj["rewards"]]))
-        local_rewards_1000_ep.append(sum([r for r in traj["local_rewards"]]))
-        global_rewards_1000_ep.append(sum([r for r in traj["global_rewards"]]))
-        ep_len_1000_ep.append(len([r for r in traj["global_rewards"]]))
+    for i, t in enumerate(trajectories):
+        rewards_1000_ep.append(t["ep_rew_total"])
+        local_rewards_1000_ep.append(t["ep_rew_local"])
+        global_rewards_1000_ep.append(t["ep_rew_global"])
+        ep_len_1000_ep.append(t["ep_len"])
+    print(f"Num of episodes: {len(traj)}")
     print(f"Mean episode reward = {sum(rewards_1000_ep) / len(rewards_1000_ep)}")
     print(f"Mean episode local reward = {sum(local_rewards_1000_ep) / len(local_rewards_1000_ep)}")
     print(f"Mean episode global reward = {sum(global_rewards_1000_ep) / len(global_rewards_1000_ep)}")
@@ -313,14 +353,14 @@ def stats(traj):
 traci.start(["sumo", "-c", "./big_simulation/conf.sumocfg"])
 ignored = warmup()
 trajectories, vehicles_exited, vehicles_entered = simulate(ignored)
-print(f'Vehicles entered: {len(vehicles_entered)}, Vehicles exited: {len(vehicles_exited)}, Throughtput: {(len(vehicles_entered) - len(vehicles_exited)) / 2}')
+print(f'Vehicles entered: {len(vehicles_entered)}, Vehicles exited: {len(vehicles_exited)}, Throughtput: {(len(vehicles_exited) - len(vehicles_entered)) / SIMU_MINS} vehs/min')
 stats(trajectories)
 
 traci.close()
 pickle.dump(
     trajectories,
     open(
-        "/project/datasets/test_results_ours_v5_100m_20181029_d23_1000_1030.pkl",
+        "/project/datasets/test_results_krauss_v5_100m_20181029_d23_1000_1030.pkl",
         "wb",
     ),
 )
